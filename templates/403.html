@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}403 Forbidden - Telnet Scanner{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 text-center">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h1 class="display-1 text-warning">403</h1>
+                <h3 class="mb-4">Access Denied</h3>
+                <p class="mb-4">You do not have permission to access this resource. Please contact your administrator if you believe this is an error.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-1"></i> Return to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

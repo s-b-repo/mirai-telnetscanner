@@ -1,0 +1,324 @@
+{% extends "layout.html" %}
+
+{% block title %}Statistics - Telnet Scanner{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Scanner Performance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-3 col-6">
+                        <div class="dashboard-widget">
+                            <div class="value text-primary">{{ stats.total_scanned|default(0)|number_format }}</div>
+                            <div class="label">Total IPs Scanned</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="dashboard-widget">
+                            <div class="value text-warning">{{ stats.total_attempts|default(0)|number_format }}</div>
+                            <div class="label">Total Login Attempts</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="dashboard-widget">
+                            <div class="value text-success">{{ stats.total_hits|default(0)|number_format }}</div>
+                            <div class="label">Total Successful Logins</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="dashboard-widget">
+                            <div class="value text-info">{{ stats.avg_scan_rate|default(0)|number_format(1) }}</div>
+                            <div class="label">Avg. Scan Rate (attempts/sec)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <canvas id="historyChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-server me-2"></i>Proxy Performance</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="proxyChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Credential Success</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="credentialChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Scanner Activity by Day</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="activityChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-dark">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Historical Scanner Logs</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>IPs Scanned</th>
+                                <th>Login Attempts</th>
+                                <th>Successful Logins</th>
+                                <th>Duration</th>
+                                <th>User</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if scanner_logs %}
+                                {% for log in scanner_logs %}
+                                <tr>
+                                    <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <span class="badge {{ 'bg-primary' if log.scan_type == 'manual' else 'bg-info' if log.scan_type == 'auto' else 'bg-warning' }}">
+                                            {{ log.scan_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.ips_scanned }}</td>
+                                    <td>{{ log.login_attempts }}</td>
+                                    <td>{{ log.successful_logins }}</td>
+                                    <td>{{ "%02d:%02d"|format(log.scan_duration // 60, log.scan_duration % 60) if log.scan_duration else "-" }}</td>
+                                    <td>{{ log.user.username if log.user else "System" }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">No scanner logs available</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Data from server (would be populated by Flask in actual implementation)
+        const historicalData = {{ historical_data|tojson|safe if historical_data else '{}' }};
+        const proxyData = {{ proxy_data|tojson|safe if proxy_data else '{}' }};
+        const credentialData = {{ credential_data|tojson|safe if credential_data else '{}' }};
+        const activityData = {{ activity_data|tojson|safe if activity_data else '{}' }};
+        
+        // Initialize historical chart if we have data
+        if (historicalData && historicalData.labels) {
+            const ctx = document.getElementById('historyChart');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: historicalData.labels,
+                    datasets: [
+                        {
+                            label: 'IPs Scanned',
+                            data: historicalData.ips_scanned,
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.2,
+                            fill: true
+                        },
+                        {
+                            label: 'Login Attempts',
+                            data: historicalData.login_attempts,
+                            borderColor: '#fd7e14',
+                            backgroundColor: 'rgba(253, 126, 20, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.2,
+                            fill: true
+                        },
+                        {
+                            label: 'Successful Logins',
+                            data: historicalData.successful_logins,
+                            borderColor: '#198754',
+                            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.2,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize proxy performance chart
+        if (proxyData && proxyData.labels) {
+            const proxyCtx = document.getElementById('proxyChart');
+            new Chart(proxyCtx, {
+                type: 'bar',
+                data: {
+                    labels: proxyData.labels,
+                    datasets: [{
+                        label: 'Success Rate (%)',
+                        data: proxyData.success_rates,
+                        backgroundColor: 'rgba(32, 201, 151, 0.7)',
+                        borderColor: '#20c997',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize credential success chart
+        if (credentialData && credentialData.labels) {
+            const credCtx = document.getElementById('credentialChart');
+            new Chart(credCtx, {
+                type: 'pie',
+                data: {
+                    labels: credentialData.labels,
+                    datasets: [{
+                        data: credentialData.success_counts,
+                        backgroundColor: [
+                            'rgba(32, 201, 151, 0.7)',
+                            'rgba(13, 110, 253, 0.7)',
+                            'rgba(253, 126, 20, 0.7)',
+                            'rgba(220, 53, 69, 0.7)',
+                            'rgba(25, 135, 84, 0.7)'
+                        ],
+                        borderColor: [
+                            '#20c997',
+                            '#0d6efd',
+                            '#fd7e14',
+                            '#dc3545',
+                            '#198754'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize activity chart
+        if (activityData && activityData.labels) {
+            const activityCtx = document.getElementById('activityChart');
+            new Chart(activityCtx, {
+                type: 'bar',
+                data: {
+                    labels: activityData.labels,
+                    datasets: [
+                        {
+                            label: 'IPs Scanned',
+                            data: activityData.ips_scanned,
+                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                            borderColor: '#0d6efd',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Successful Logins',
+                            data: activityData.successful_logins,
+                            backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                            borderColor: '#198754',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+/**
+ * Custom styles for Telnet Scanner
+ * Provides additional styling beyond Bootstrap defaults
+ */
+
+/* General improvements */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Improve card appearance */
+.card {
+    margin-bottom: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Responsive table improvements */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.table {
+    margin-bottom: 0;
+}
+
+/* Code formatting */
+code {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--bs-info);
+    font-size: 0.875em;
+}
+
+/* Make footer stick to bottom */
+footer {
+    margin-top: auto;
+}
+
+/* Improve forms */
+.form-control:focus {
+    box-shadow: 0 0 0 0.25rem rgba(40, 120, 235, 0.15);
+}
+
+/* Improve button spacing */
+.btn-group-sm .btn {
+    margin-right: 0.25rem;
+}
+
+.btn-group-sm .btn:last-child {
+    margin-right: 0;
+}
+
+/* Dashboard widgets */
+.dashboard-widget {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background-color: rgba(0, 0, 0, 0.1);
+    margin-bottom: 1rem;
+}
+
+.dashboard-widget .value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.dashboard-widget .label {
+    color: var(--bs-gray-600);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05rem;
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 250px;
+}
+
+/* Badge enhancements */
+.badge {
+    padding: 0.35em 0.65em;
+    font-weight: 500;
+}
+
+/* Status indicators */
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.status-indicator.active {
+    background-color: var(--bs-success);
+    box-shadow: 0 0 0 2px rgba(var(--bs-success-rgb), 0.25);
+}
+
+.status-indicator.inactive {
+    background-color: var(--bs-danger);
+    box-shadow: 0 0 0 2px rgba(var(--bs-danger-rgb), 0.25);
+}
+
+/* Form validation visual cues */
+.form-control.is-invalid {
+    background-image: none;
+    padding-right: 0.75rem;
+}
+
+.form-control.is-valid {
+    background-image: none;
+    padding-right: 0.75rem;
+}
+
+/* Progress bar enhancements */
+.progress {
+    background-color: rgba(255, 255, 255, 0.1);
+    margin: 0.5rem 0;
+}
+
+/* Improve modals */
+.modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive font sizes */
+@media (max-width: 576px) {
+    h4 {
+        font-size: 1.25rem;
+    }
+    
+    h5 {
+        font-size: 1.15rem;
+    }
+    
+    .dashboard-widget .value {
+        font-size: 1.5rem;
+    }
+}

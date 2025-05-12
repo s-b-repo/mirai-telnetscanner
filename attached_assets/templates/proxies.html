@@ -1,0 +1,163 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Proxy Management</h5>
+                <div>
+                    <span class="badge bg-primary">{{ proxies|length }} Total Proxies</span>
+                    <span class="badge bg-success">{{ working_proxies|length }} Working</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <form action="{{ url_for('scan_proxies') }}" method="post">
+                            {{ scan_form.hidden_tag() }}
+                            <button type="submit" class="btn btn-info">
+                                <i class="bi bi-search"></i> Scan for Proxies
+                            </button>
+                        </form>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <form action="{{ url_for('test_proxies') }}" method="post">
+                            {{ test_form.hidden_tag() }}
+                            <button type="submit" class="btn btn-secondary">
+                                <i class="bi bi-check2-all"></i> Test All Proxies
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                
+                {% if scanning %}
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div>
+                            Proxy scan in progress...
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Proxy</th>
+                                <th>Status</th>
+                                <th>Response Time</th>
+                                <th>Last Tested</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for proxy in proxies %}
+                            <tr>
+                                <td>{{ proxy.address }}</td>
+                                <td>
+                                    {% if proxy.is_working %}
+                                    <span class="badge bg-success">Working</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Not Working</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ proxy.response_time|default('N/A', true) }}</td>
+                                <td>{{ proxy.last_tested|default('Never', true) }}</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <form action="{{ url_for('test_proxy', proxy_id=proxy.id) }}" method="post">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Test</button>
+                                        </form>
+                                        <form action="{{ url_for('delete_proxy', proxy_id=proxy.id) }}" method="post" class="ms-1">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No proxies found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add Proxy</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('add_proxy') }}" method="post" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.host.label(class="form-label") }}
+                        {{ form.host(class="form-control" + (" is-invalid" if form.host.errors else ""), placeholder="IP address or hostname") }}
+                        {% for error in form.host.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.port.label(class="form-label") }}
+                        {{ form.port(class="form-control" + (" is-invalid" if form.port.errors else ""), placeholder="Port number") }}
+                        {% for error in form.port.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Proxy Scan History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for log in scan_logs %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ log.scan_type|capitalize }} Scan</h6>
+                            <small>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        <p class="mb-1">Found {{ log.proxies_found }} working proxies</p>
+                        <small>Tested {{ log.proxies_tested }} proxies in {{ log.scan_duration|round(1) }}s</small>
+                    </div>
+                    {% else %}
+                    <div class="list-group-item text-center text-muted">
+                        <p class="mb-0">No proxy scans yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    {% if scanning %}
+    // Auto-reload the page every 5 seconds when scanning
+    setTimeout(function() {
+        window.location.reload();
+    }, 5000);
+    {% endif %}
+</script>
+{% endblock %}

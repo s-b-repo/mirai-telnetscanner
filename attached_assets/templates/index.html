@@ -1,0 +1,228 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Scanner Control</h5>
+                <span class="badge {% if scanner_stats.status == 'running' %}bg-success{% else %}bg-danger{% endif %}">
+                    {{ scanner_stats.status|capitalize }}
+                </span>
+            </div>
+            <div class="card-body">
+                {% if scanner_stats.status == 'running' %}
+                    <form action="/stop_scanner" method="post">
+                        <button type="submit" class="btn btn-danger">Stop Scanner</button>
+                    </form>
+                {% else %}
+                    <form action="/start_scanner" method="post" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="batch_size" class="form-label">Batch Size</label>
+                            <input type="number" class="form-control" id="batch_size" name="batch_size" value="200" min="10" max="1000">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="max_conns" class="form-label">Max Connections</label>
+                            <input type="number" class="form-control" id="max_conns" name="max_conns" value="50" min="5" max="200">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="verbose" name="verbose">
+                                <label class="form-check-label" for="verbose">
+                                    Verbose Mode
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">Start Scanner</button>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Scanner Output</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="console-output" id="console-output">
+                    {% for line in scanner_output %}
+                        <div>{{ line }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="stats-box mb-3">
+                    <p class="mb-1"><strong>Status:</strong> <span id="status">{{ scanner_stats.status|capitalize }}</span></p>
+                    <p class="mb-1"><strong>Start Time:</strong> <span id="start-time">{{ scanner_stats.start_time or 'N/A' }}</span></p>
+                    <p class="mb-1"><strong>Last Update:</strong> <span id="last-update">{{ scanner_stats.last_update or 'N/A' }}</span></p>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="card bg-darker">
+                            <div class="card-body py-2">
+                                <h3 id="scanned-count">{{ scanner_stats.scanned }}</h3>
+                                <small>Scanned</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card bg-darker">
+                            <div class="card-body py-2">
+                                <h3 id="attempts-count">{{ scanner_stats.attempts }}</h3>
+                                <small>Attempts</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="card bg-darker">
+                            <div class="card-body py-2">
+                                <h3 id="hits-count">{{ scanner_stats.hits }}</h3>
+                                <small>Hits</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Credentials</h5>
+                <a href="/edit_credentials" class="btn btn-sm btn-outline-secondary">Edit</a>
+            </div>
+            <div class="card-body">
+                <p><small>{{ credentials|length }} credential pairs loaded</small></p>
+                <div class="list-group" style="max-height: 200px; overflow-y: auto;">
+                    {% for cred in credentials[:10] %}
+                        <div class="list-group-item list-group-item-action">{{ cred }}</div>
+                    {% endfor %}
+                    {% if credentials|length > 10 %}
+                        <div class="list-group-item text-center text-muted">
+                            <small>... and {{ credentials|length - 10 }} more</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Successful Hits</h5>
+                <form action="/clear_hits" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Clear</button>
+                </form>
+            </div>
+            <div class="card-body">
+                <div class="list-group" id="hits-list" style="max-height: 300px; overflow-y: auto;">
+                    {% if hits %}
+                        {% for hit in hits %}
+                            <div class="list-group-item list-group-item-action">{{ hit }}</div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted p-3">
+                            <p>No successful logins recorded yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const consoleOutput = document.getElementById('console-output');
+    const statusElement = document.getElementById('status');
+    const startTimeElement = document.getElementById('start-time');
+    const lastUpdateElement = document.getElementById('last-update');
+    const scannedCountElement = document.getElementById('scanned-count');
+    const attemptsCountElement = document.getElementById('attempts-count');
+    const hitsCountElement = document.getElementById('hits-count');
+    const hitsList = document.getElementById('hits-list');
+    
+    // Auto-scroll console to bottom
+    function scrollToBottom() {
+        consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+    
+    // Update statistics from API
+    function updateStats() {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                statusElement.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                startTimeElement.textContent = data.start_time || 'N/A';
+                lastUpdateElement.textContent = data.last_update || 'N/A';
+                scannedCountElement.textContent = data.scanned;
+                attemptsCountElement.textContent = data.attempts;
+                hitsCountElement.textContent = data.hits;
+            });
+    }
+    
+    // Update console output from API
+    function updateOutput() {
+        fetch('/api/output')
+            .then(response => response.json())
+            .then(data => {
+                consoleOutput.innerHTML = '';
+                data.forEach(line => {
+                    const div = document.createElement('div');
+                    div.textContent = line;
+                    consoleOutput.appendChild(div);
+                });
+                scrollToBottom();
+            });
+    }
+    
+    // Update hits list from API
+    function updateHits() {
+        fetch('/api/hits')
+            .then(response => response.json())
+            .then(data => {
+                hitsList.innerHTML = '';
+                if (data.length === 0) {
+                    const div = document.createElement('div');
+                    div.className = 'text-center text-muted p-3';
+                    div.innerHTML = '<p>No successful logins recorded yet</p>';
+                    hitsList.appendChild(div);
+                } else {
+                    data.forEach(hit => {
+                        const div = document.createElement('div');
+                        div.className = 'list-group-item list-group-item-action';
+                        div.textContent = hit;
+                        hitsList.appendChild(div);
+                    });
+                }
+            });
+    }
+    
+    // Auto-update stats and output when scanner is running
+    function setupAutoUpdate() {
+        scrollToBottom();
+        
+        // Update every 2 seconds if scanner is running
+        setInterval(() => {
+            if (statusElement.textContent.toLowerCase() === 'running') {
+                updateStats();
+                updateOutput();
+                updateHits();
+            }
+        }, 2000);
+    }
+    
+    // Initialize auto-update
+    document.addEventListener('DOMContentLoaded', setupAutoUpdate);
+</script>
+{% endblock %}
